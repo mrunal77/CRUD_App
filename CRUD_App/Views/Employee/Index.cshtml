@@ -1,0 +1,265 @@
+﻿@{
+    ViewBag.Title = "Employee List";
+}
+
+<h2>Employee List</h2>
+<div>
+    <a @*class="btn btn-primary" style="margin-bottom:10px; text-align:right;"*@ onclick="PopupForm('@Url.Action("StoreOrEdit","Employee")')"><i class="fa fa-plus"></i>&nbsp; @*&nbsp; New*@</a>
+    |<a @*style='margin-bottom: 10px'*@ onclick="DeleteAgGrid()">&nbsp;<i class='fa fa-trash' style="text-align:left"></i>&nbsp;</a>
+    |<a @*style='margin-bottom: 10px'*@ onclick="PopupFormEdit('@Url.Action("StoreOrEdit","Employee")')">&nbsp;<i class='fa fa-pencil'>&nbsp;</i></a>
+    |<a @*class="btn btn-primary" style="margin-bottom:10px;"*@ onclick="Download('@Url.Action("StoreOrEdit","Employee")')">&nbsp;<i class="fa fa-download"></i> &nbsp;@*&nbsp; Download*@</a>
+</div>
+
+<div id="myGrid" style="height: 400px;width:100%;" class="ag-theme-alpine"></div>
+
+<br />
+
+<table id="EmployeeTable" class="table table-striped table-bordered" style="width:100%">
+    <thead>
+        <tr>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Designation</th>
+            <th>Email</th>
+            <th>Mobile</th>
+            <th>Address</th>
+            <th>PinCode</th>
+            <th></th>
+        </tr>
+    </thead>
+</table>
+
+<link href="https://cdn.datatables.net/1.10.21/css/dataTables.bootstrap.min.css" rel="stylesheet" />
+<link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" />
+
+@section scripts{
+
+    <script src="//cdn.datatables.net/1.10.15/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap.min.js"></script>
+    @*<script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.noStyle.js"></script>*@
+    <script src="~/Scripts/ag-grid-community.js"></script>
+    <link href="~/Content/ag-grid.css" rel="stylesheet" />
+    <link href="~/Content/ag-theme-alpine.css" rel="stylesheet" />
+    @*<link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-grid.css">
+        <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-theme-alpine.css">*@
+
+    <script>
+
+        const columnDefs = [
+            { field: "Select", width: 100, headerCheckboxSelectionFilteredOnly: true, checkboxSelection: true},
+            { field: "FirstName", sortable: true, filter: true},
+            { field: "LastName", sortable: true, filter: true},
+            { field: "Designation", sortable: true, filter: true },
+            { field: "Email", sortable: true, filter: true},
+            { field: "Mobile", sortable: true, filter: true},
+            { field: "Address", sortable: true, filter: true},
+            { field: "PinCode", sortable: true, filter: true}
+        ];
+
+        // let the grid know which columns to use
+        const gridOptions = {
+            columnDefs: columnDefs
+        };
+        gridOptions.rowSelection = "multiple";
+        gridOptions.pagination = true;
+        gridOptions.paginationPageSize = 20;
+        gridOptions.cacheBlockSize = 20;
+        gridOptions.rowGroupPanelShow = true;
+
+        const eGridDiv = document.querySelector('#myGrid');
+
+        new agGrid.Grid(eGridDiv, gridOptions);
+
+        const getDataUrl = 'http://localhost:57423/Employee/GetData';
+
+        var data = getJSON(getDataUrl);
+
+        data.then(data => { gridOptions.api.setRowData(data.data);});
+
+        //agGrid.simpleHttpRequest({ url: 'http://localhost:57423/Employee/GetData' })
+        //    .then(data => {
+        //        gridOptions.api.setRowData(data.data);
+        //    });
+
+        var Popup, dataTable;
+
+        $(document).ready(function () {
+            dataTable = $("#EmployeeTable").DataTable({
+
+                "ajax": {
+
+                    "url": "/Employee/GetData",
+                    "type": "GET",
+                    "datatype": "json"
+                },
+
+                "columns": [
+                    { "data": "FirstName" },
+                    { "data": "LastName" },
+                    { "data": "Designation" },
+                    { "data": "Email" },
+                    { "data": "Mobile" },
+                    { "data": "Address" },
+                    { "data": "PinCode" },
+                    {
+                        "data": "Id", "render": function (data) {
+
+                            return "<a class='btn btn-default btn-sm' onclick=PopupForm('@Url.Action("StoreOrEdit","Employee")/" + data + "')><i class='fa fa-pencil'></i>Edit</a> <a class='btn btn-danger btn-sm' style='margin-left:5px' onclick=Delete(" + data + ")><i class='fa fa-trash'></i>Delete</a>";
+                        },
+
+                        "orderable": true,
+                        "searchable": true,
+                        "width" : "150px"
+                    }
+
+
+                ],
+
+                "language": {
+                    "emptyTable" : "No data found please click on <b>Add New </b> Button"
+                }
+
+            });
+        });
+
+        function PopupForm(url) {
+
+            var formDiv = $('<div/>');
+            $.get(url).done(function (response) {
+
+                    formDiv.html(response);
+
+                    Popup = formDiv.dialog({
+                        autoOpen : true,
+                        resizable : false,
+                        title : 'Fill Employee Details',
+                        height : 650,
+                        width: 700,
+                        dialogClass: 'main-dialog-class',
+                        close: function () {
+                            Popup.dialog('destroy').remove();
+                        }
+                    });
+                });
+        }
+
+        function PopupFormEdit(url) {
+            var values = gridOptions.api.getSelectedRows();
+            if (values.length > 1) {
+                alert("Please Select only one row.");
+            }
+            else if (values.length == 0) {
+                alert("Please Select a row.");
+            }
+            else {
+                url = url + "/" + values[0].Id;
+
+            var formDiv = $('<div/>');
+                $.get(url).done(function (response) {
+
+                    formDiv.html(response);
+
+                    Popup = formDiv.dialog({
+                        autoOpen: true,
+                        resizable: false,
+                        title: 'Fill Employee Details',
+                        height: 650,
+                        width: 700,
+                        dialogClass: 'main-dialog-class',
+                        close: function () {
+                            Popup.dialog('destroy').remove();
+                        }
+                    });
+                });
+            }
+        }
+
+        function SubmitForm(form) {
+            $.validator.unobtrusive.parse(form);
+            if ($(form).valid()) {
+            $.ajax({
+                type: "POST",
+                url: form.action,
+                data: $(form).serialize(),
+                success: function (data) {
+                    if (data.success) {
+                        Popup.dialog('close');
+                        dataTable.ajax.reload();
+                        var data = getJSON(getDataUrl);
+
+                        data.then(data => { gridOptions.api.setRowData(data.data); });
+                        //agGrid.simpleHttpRequest({ url: 'http://localhost:57423/Employee/GetData' })
+                        //    .then(data => {
+                        //        gridOptions.api.setRowData(data.data);
+                        //    });
+                        $.notify("Data Saved.")
+                    }
+                }
+                });
+            }
+            return false;
+        }
+
+        function Delete(id) {
+            if (confirm('Are you sure to Delete this record ?')) {
+
+                $.ajax({
+
+                    type: "POST",
+                    url: '@Url.Action("Delete","Employee")/' + id,
+                    success: function (data) {
+
+                        if (data.success) {
+
+                            dataTable.ajax.reload();
+                            var data = getJSON(getDataUrl);
+                            data.then(data => { gridOptions.api.setRowData(data.data); });
+                            //agGrid.simpleHttpRequest({ url: 'http://localhost:57423/Employee/GetData' })
+                            //    .then(data => {
+                            //        gridOptions.api.setRowData(data.data);
+                            //    });
+
+                            $.notify("Data Deleted.")
+                        }
+                    }
+                });
+            }
+        }
+
+        function DeleteAgGrid() {
+
+            var values = gridOptions.api.getSelectedRows();
+            if (values.length == 0) {
+                alert("Please Select rows to Delete.")
+            }
+            else {
+                for (i = 0; i < values.length; i++) {
+                    $.ajax({
+                        type: "POST",
+                        url: '@Url.Action("Delete","Employee")/' + values[i].Id,
+                        success: function (data) {
+                            if (data.success) {
+                                dataTable.ajax.reload();
+                                var data = getJSON(getDataUrl);
+                                data.then(data => { gridOptions.api.setRowData(data.data); });
+                                $.notify(values.length + " rows deleted.")
+                            }
+                        }
+                    });
+                }
+            }
+
+        }
+
+        function getJSON(url) {
+            var promise = $.ajax({
+                url: url,
+                dataType: "json",
+                cache: true
+
+            });
+            return promise;
+        }
+    </script>
+}  
